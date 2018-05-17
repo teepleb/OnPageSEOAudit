@@ -60,6 +60,34 @@ class Parser():
         else:
             self.headers['h2'] = parsed_html.body.find('h2')
 
+        if self.header_count['h3'] > 1:
+            self.headers['h3'] = []
+            for value in parsed_html.body.find_all('h3'):
+                self.headers['h3'].append(value.text)
+        else:
+            self.headers['h3'] = parsed_html.body.find('h3')
+
+        if self.header_count['h4'] > 1:
+            self.headers['h4'] = []
+            for value in parsed_html.body.find_all('h4'):
+                self.headers['h4'].append(value.text)
+        else:
+            self.headers['h4'] = parsed_html.body.find('h4')
+
+        if self.header_count['h5'] > 1:
+            self.headers['h5'] = []
+            for value in parsed_html.body.find_all('h5'):
+                self.headers['h5'].append(value.text)
+        else:
+            self.headers['h5'] = parsed_html.body.find('h5')
+
+        if self.header_count['h6'] > 1:
+            self.headers['h6'] = []
+            for value in parsed_html.body.find_all('h6'):
+                self.headers['h6'].append(value.text)
+        else:
+            self.headers['h6'] = parsed_html.body.find('h6')
+
     @property
     def getTitle(self):
         return self.title
@@ -97,9 +125,9 @@ if __name__ == '__main__':
         
         if len(parser.getTitle) >= 60:
             print("Your TITLE is: {0}".format(parser.getTitle))
-            print("WARNING: Your TITLE tag is too long. You should reduce it to be less than 60 characters.")
+            print("\nWARNING: Your TITLE tag is too long. You should reduce it to be less than 60 characters.")
         elif len(parser.getTitle) <= 0:
-            print("WARNING: You currently do not have a TITLE tag, you should add one.")
+            print("\nWARNING: You currently do not have a TITLE tag, you should add one.")
         else:
             print("Your TITLE is: {0}".format(parser.getTitle))
         
@@ -107,55 +135,58 @@ if __name__ == '__main__':
         # description - content, length, etc.
         print("Your DESC is: {0}".format(parser.getDesc))
         if len(parser.getDesc) > 160:
-            print("WARNING: Your DESC is too long. You should reduce it to be less than 160 characters for best display.")
+            print("\nWARNING: Your DESC is too long. You should reduce it to be less than 160 characters for best display.")
         elif len(parser.getDesc) <= 50:
-            print("WARNING: You're missing out on SERP space! Add some more content to your description. Keep in mind it needs to be between 50-300 characters for best performance.")
+            print("\nWARNING: You're missing out on SERP space! Add some more content to your description. Keep in mind it needs to be between 50-300 characters for best performance.")
 
         printIntro("CANONICAL")
         # canonicals - url
         print("Your CANONICAL is: {0}".format(parser.getCanonical))
         if parser.getCanonical != current_page.url:
-            print("WARNING: Your current canonical does not match the page URL submitted.")
+            print("\nWARNING: Your current canonical does not match the page URL submitted.")
         elif parser.getCanonical == "":
-            print("WARNING: You do not have a proper canonical setup on the page.")
-
-        printIntro("STRUCTURED DATA")
-        # schema, open graph, twitter cards, etc.
+            print("\nWARNING: You do not have a proper canonical setup on the page.")     
 
         printIntro("HEADERS")
         # header tags (h1 x 1, h2, h3, etc.) - need to show frequency, h1 highest on page, and header tag content
         print("The current amount of headers are: \n")
         if parser.getHeaders:
             headers, header_count = parser.getHeaders
-            print("H1 -> {0}".format(header_count['h1']))
-            print("H2 -> {0}".format(header_count['h2']))
-            print("H3 -> {0}".format(header_count['h3']))
-            print("H4 -> {0}".format(header_count['h4']))
-            print("H5 -> {0}".format(header_count['h5']))
-            print("H6 -> {0}".format(header_count['h6']))
+            print("H1: {0}".format(header_count['h1']))
+            print("H2: {0}".format(header_count['h2']))
+            print("H3: {0}".format(header_count['h3']))
+            print("H4: {0}".format(header_count['h4']))
+            print("H5: {0}".format(header_count['h5']))
+            print("H6: {0}".format(header_count['h6']))
 
             if header_count['h1'] > 1:
-                print("WARNING: You have more than one H1 on your page. Please reduce to having only one on the page.")
+                print("\nFirst H1: {0}".format(headers['h1'][0].text))
+                print("Remaining H1s:")
+                for value in headers['h1']:
+                    print(value)
+                print("\nWARNING: You have more than one H1 on your page. Please reduce to having only one on the page.")
             elif header_count['h1'] == 0:
-                print("WARNING: You do not have an H1 on your page, please add one.")
+                print("\nWARNING: You do not have an H1 on your page, please add one.")
+            else:
+                print("\n First H1 -> {0}".format(headers['h1'].text))
 
         printIntro("INTERNAL LINKING")
         # on page linking - internal vs external, no follow vs follow, broken links, no special chars in urls aka they are friendly
 
-        printIntro("BACKLINKS")
-        # backlinks to page (future?)
-
-        printIntro("ROBOTS.TXT")
-        # double check for robots.txt
-
-        printIntro("SITEMAP")
-        # double check for sitemap
+        printIntro("GOOGLE ANALYTICS")
         # double check for Google Analytics
+
+        printIntro("MOBILE")
         # check page rendering for mobile
+
+        printIntro("PAGE SPEED")
         # check page speed test
+
+        printIntro("EXTERNAL RESOURCES")
         # check external resources & show page size
         # display resource #s - html objects, js resources, css resources, images, other
-        # are images optimized
-        # does it pass W3C
+
+        printIntro("EXTRA")
         # does it us inline styling
         # is the page secure
+        # schema, open graph, twitter cards, etc.
