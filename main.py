@@ -1,5 +1,6 @@
 import requests
 import sys
+import re
 try:
     from BeautifulSoup import BeautifulSoup
 except ImportError:
@@ -28,6 +29,9 @@ class Parser():
         self.canonical = ""
         self.header_count = {"h1": 0, "h2": 0, "h3": 0, "h4": 0, "h5": 0, "h6": 0}
         self.headers = {}
+        self.google_analytics = False
+        self.image_count = 0
+        self.is_secure = False
         self.parseHTML(page_source)
     
     def parseHTML(self, html_string):
@@ -88,6 +92,11 @@ class Parser():
         else:
             self.headers['h6'] = parsed_html.body.find('h6')
 
+        if parsed_html.head.find(text=re.compile('UA-')):
+            self.google_analytics = True
+
+        self.image_count = len(parsed_html.body.find_all('img'))
+
     @property
     def getTitle(self):
         return self.title
@@ -104,6 +113,113 @@ class Parser():
     def getHeaders(self):
         return self.headers, self.header_count
 
+    @property
+    def getGoogleAnalytics(self):
+        return self.google_analytics
+
+    @property
+    def getImageCount(self):
+        return self.image_count
+
+
+class PageSpeed(object):
+    def __init__(self, api_key=None):
+        self.api_key = api_key
+        self.endpoint = 'https://www.googleapis.com/pagespeedonline/v4/runPagespeed'
+
+    def fetch(self, url, **kwargs):
+        kwargs.setdefault('filter_third_party_resources', False)
+        kwargs.setdefault('screenshot', False)
+        kwargs.setdefault('strategy', 'desktop')
+
+        params = kwargs.copy()
+        params.update({'url': url})
+
+        response = requests.get(self.endpoint, params=params)
+
+        return PageSpeedResponse(response)
+
+class PageSpeedResponse():
+    def __init__(self, response):
+        response.raise_for_status()
+
+        self._response = response
+        self._request = response.url
+        self.json = response.json()
+
+    @property
+    def url(self):
+        return self.json.get('id')
+
+    @property
+    def title(self):
+        return self.json.get('title')
+
+    @property
+    def response_code(self):
+        return self.json.get('responseCode')
+
+    @property
+    def speed(self):
+        return self.json.get('ruleGroups').get('SPEED').get('score')
+
+    @property
+    def css_response_bytes(self):
+        return self.json.get('pageStats').get('cssResponseBytes')
+
+    @property
+    def html_response_bytes(self):
+        return self.json.get('pageStats').get('htmlResponseBytes')
+
+    @property
+    def image_response_bytes(self):
+        return self.json.get('pageStats').get('imageResponseBytes')
+
+    @property
+    def javascript_response_bytes(self):
+        return self.json.get('pageStats').get('javascriptResponseBytes')
+
+    @property
+    def number_css_resources(self):
+        return self.json.get('pageStats').get('numberCssResources')
+
+    @property
+    def number_hosts(self):
+        return self.json.get('pageStats').get('numberHosts')
+
+    @property
+    def number_js_resources(self):
+        return self.json.get('pageStats').get('numberJsResources')
+
+    @property
+    def number_resources(self):
+        return self.json.get('pageStats').get('numberResources')
+
+    @property
+    def number_static_resources(self):
+        return self.json.get('pageStats').get('numberStaticResources')
+
+    @property
+    def other_response_bytes(self):
+        return self.json.get('pageStats').get('otherResponseBytes')
+
+    @property
+    def text_response_bytes(self):
+        return self.json.get('pageStats').get('textResponseBytes')
+
+    @property
+    def total_request_bytes(self):
+        return self.json.get('pageStats').get('totalRequestBytes')
+
+    @property
+    def total_roundtrips(self):
+        return self.json.get('pageStats').get('numTotalRoundTrips')
+
+    @property
+    def total_render_blocking_roundtrips(self):
+        return self.json.get('pageStats').get('numRenderBlockingRoundTrips')
+
+
 def printIntro(section_title):
     # This function will print the header for each section in a nicer way, for now.
     print("\n")
@@ -118,6 +234,8 @@ if __name__ == '__main__':
     else:
         current_page = Page(sys.argv[1])
         parser = Parser(current_page.getPageSource())
+        page_speed = PageSpeed()
+        page_speed_response = page_speed.fetch(current_page.url, strategy='desktop')
 
 
         printIntro("TITLE")
@@ -175,18 +293,35 @@ if __name__ == '__main__':
 
         printIntro("GOOGLE ANALYTICS")
         # double check for Google Analytics
+        if parser.getGoogleAnalytics == True:
+            print("You have Google Analytics on your page.")
+        else:
+            print("WARNING: You do not have Google Analytics on your page, you should add that ASAP.")
 
         printIntro("MOBILE")
         # check page rendering for mobile
 
         printIntro("PAGE SPEED")
         # check page speed test
+        print("Your page speed is: {0}/100".format(page_speed_response.speed))
 
         printIntro("EXTERNAL RESOURCES")
         # check external resources & show page size
         # display resource #s - html objects, js resources, css resources, images, other
+        print("Your total external resources are: {0}".format(page_speed_response.number_resources))
+        print("Your total external resource size is: {0}".format(page_speed_response.total_request_bytes))
+        print("This page has {0} CSS resources that are {1} bytes in size.".format(page_speed_response.number_css_resources, page_speed_response.css_response_bytes))
+        print("This page has {0} JS resources that are {1} bytes in size.".format(page_speed_response.number_js_resources, page_speed_response.javascript_response_bytes))
+        print("This page has {0} IMAGE resources that are {1} bytes in size.".format(parser.getImageCount, page_speed_response.image_response_bytes))
 
-        printIntro("EXTRA")
+        printIntro("EXTRA NOTES/WARNINGS")
         # does it us inline styling
+        if '<style' in current_page.page_source:
+            print("WARNING: You should limit your inline CSS as much as possible to reduce file bloat.")
+        elif 'style=' in current_page.page_source:
+            print("WARNING: You should limit your inline CSS as much as possible to reduce file bloat.")
+            
         # is the page secure
+        if not 'https' in current_page.url:
+            print("WARNING: You should switch to HTTPS as soon as possible, this is critical in future Google updates.")
         # schema, open graph, twitter cards, etc.
